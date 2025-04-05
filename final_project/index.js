@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken")
 const session = require("express-session")
 const customer_routes = require("./router/auth_users.js").authenticated
 const gen_routes = require("./router/general.js").general
+const jwt_secret = require("./router/auth_users.js").jwtSecret
 
 const app = express()
 
@@ -19,19 +20,19 @@ app.use(
 
 app.use("/customer/auth/*", function auth(req, res, next) {
   //Check if the user is authorized and has a valid session
-  if (req.session.authorization) {
-    let token = req.session.authorization["accessToken"]
-    if (token) {
-      jwt.verify(token, "fingerprint_customer", (err, user) => {
-        if (!err) {
-          req.user = user
-          next()
-        } else {
-          return res.status(403).json({ message: "User not authorized" })
-        }
-      })
-    }
-  } else return res.send(`You need to login first`)
+  const authHeader = req.headers.authorization
+
+  if (authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1] // Bearer <token>
+    jwt.verify(token, jwt_secret, (err, user) => {
+      if (!err) {
+        req.user = user
+        next()
+      } else {
+        return res.status(403).json({ message: "Invalid token" })
+      }
+    })
+  } else return res.send("Invalid authorization format")
 })
 
 const PORT = 5000
